@@ -1,0 +1,2 @@
+glance_store>=0.1.10
+git+https://github.com/scality/scality-sproxyd-client.git#egg=scality-sproxyd-client
