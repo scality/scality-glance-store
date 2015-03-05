@@ -37,8 +37,6 @@ LOG = logging.getLogger(__name__)
 logging.getLogger('urllib3.util.retry').level = logging.INFO
 
 """
-Test this with exotic chinese char in image name
-
 rule="OUTPUT -p tcp --dport 81 -d 167.88.149.214 -j DROP";
 sudo iptables --check $rule &> /dev/null || sudo iptables -A $rule
 sudo iptables -D $rule
@@ -47,7 +45,8 @@ sudo iptables -D $rule
 _SPROXYD_OPTS = [
     cfg.ListOpt('scality_sproxyd_endpoints',
                 help=_("Comma-separated list of Sproxyd endpoints which "
-                       "accept queries 'by path'")),
+                       "accept queries 'by path' (e.g. 'http://10.5.9.2:81/"
+                       "proxy/chord_path/')")),
 ]
 
 
@@ -87,8 +86,7 @@ class Store(driver.Store):
         super(Store, self).__init__(conf)
 
         endpoints = self.conf.glance_store.scality_sproxyd_endpoints
-        self.sproxyd_client = sproxyd_client.SproxydClient(endpoints,
-                                                           logger=LOG)
+        self.sproxyd_client = sproxyd_client.SproxydClient(endpoints)
 
     @staticmethod
     def get_schemes():

@@ -15,13 +15,22 @@
 
 """Tests for Scality Glance Store"""
 
+import mock
 import unittest
 import uuid
 
 import glance_store.exceptions
+import glance_store.tests.base
+
+import scality_sproxyd_client.exceptions
 
 from scality_glance_store.store import StoreLocation
 from scality_glance_store.store import Store
+
+
+class MockLocation(object):
+    def __init__(self, _uuid):
+        self.store_location = StoreLocation({'image_id': _uuid}, {})
 
 
 class TestStoreLocation(unittest.TestCase):
@@ -49,8 +58,107 @@ class TestStoreLocation(unittest.TestCase):
         self.assertEqual(image_id_2, store_location.image_id)
 
 
-class TestStore(unittest.TestCase):
+@mock.patch('eventlet.spawn', mock.Mock())
+class TestStore(glance_store.tests.base.StoreBaseTest):
     """Tests for scality_glance_store.store.Store"""
+
+    def setUp(self):
+        """Establish a clean test environment."""
+        super(TestStore, self).setUp()
+
+        self.set_sproxyd_endpoints_in_conf(['http://localhost:81/proxy/path/'])
+
+    def set_sproxyd_endpoints_in_conf(self, endpoints):
+        self.conf.set_override('scality_sproxyd_endpoints', endpoints,
+                               group='glance_store')
+
+    def test_init(self):
+        endpoints = set(['http://h1:81/proxy/', 'http://h2:81/proxy/'])
+        self.set_sproxyd_endpoints_in_conf(endpoints)
+
+        store = Store(self.conf)
+        self.assertEqual(endpoints, store.sproxyd_client.sproxyd_urls_set)
+
+    def test_get_schemes(self):
+        store = Store(self.conf)
+
+        self.assertEqual(('scality',), store.get_schemes())
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_object', side_effect=scality_sproxyd_client.exceptions.
+                SproxydException())
+    def test_get_with_sproxyd_exception(self, mock_get_object):
+        store = Store(self.conf)
+
+        _uuid = str(uuid.uuid4())
+        location = MockLocation(_uuid)
+
+        self.assertRaises(glance_store.exceptions.RemoteServiceUnavailable,
+                          store.get, location)
+        mock_get_object.assert_called_once_with(_uuid)
+
+    def test_get(self):
+        store = Store(self.conf)
+
+        _uuid = str(uuid.uuid4())
+        location = MockLocation(_uuid)
+
+        data = '*'*80
+        headers = {'Content-length': len(data)}
+
+        def gen():
+            yield data
+
+        mock_get_object = mock.Mock()
+        mock_get_object.return_value = headers, gen()
+
+        with mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                        'get_object', mock_get_object):
+            resp, content_length = store.get(location)
+
+        mock_get_object.assert_called_once_with(_uuid)
+        self.assertEqual(len(data), content_length)
+        self.assertEqual(data, resp.another())
+        self.assertEqual('', resp.another())
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                side_effect=scality_sproxyd_client.exceptions.
+                SproxydHTTPException('', http_status=404))
+    def test_delete_with_sproxyd_exception_404(self, mock_head):
+        store = Store(self.conf)
+
+        _uuid = str(uuid.uuid4())
+        location = MockLocation(_uuid)
+
+        self.assertRaises(glance_store.exceptions.NotFound, store.delete,
+                          location)
+        mock_head.assert_called_once_with(_uuid)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                side_effect=scality_sproxyd_client.exceptions.
+                SproxydHTTPException('', http_status=500))
+    def test_delete_with_sproxyd_exception_500(self, mock_head):
+        store = Store(self.conf)
+
+        _uuid = str(uuid.uuid4())
+        location = MockLocation(_uuid)
+
+        self.assertRaises(scality_sproxyd_client.exceptions.
+                          SproxydHTTPException, store.delete, location)
+        mock_head.assert_called_once_with(_uuid)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                mock.Mock())
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'del_object')
+    def test_delete(self, mock_del_object):
+        store = Store(self.conf)
+
+        _uuid = str(uuid.uuid4())
+        location = MockLocation(_uuid)
+
+        store.delete(location)
+        mock_del_object.assert_called_once_with(_uuid)
 
 
 def test_store_location_parse_uri_with_bad_uri():

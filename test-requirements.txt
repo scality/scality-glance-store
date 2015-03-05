@@ -4,3 +4,7 @@ coverage
 nose
 openstack.nose_plugin
 mock>=1.0
+
+eventlet
+
+oslotest
