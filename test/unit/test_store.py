@@ -15,7 +15,9 @@
 
 """Tests for Scality Glance Store"""
 
+import logging
 import mock
+import StringIO
 import unittest
 import uuid
 
@@ -27,10 +29,12 @@ import scality_sproxyd_client.exceptions
 from scality_glance_store.store import StoreLocation
 from scality_glance_store.store import Store
 
+logging.getLogger('stevedore.extension').level = logging.INFO
+
 
 class MockLocation(object):
-    def __init__(self, _uuid):
-        self.store_location = StoreLocation({'image_id': _uuid}, {})
+    def __init__(self, image_id):
+        self.store_location = StoreLocation({'image_id': image_id}, {})
 
 
 class TestStoreLocation(unittest.TestCase):
@@ -90,18 +94,18 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
     def test_get_with_sproxyd_exception(self, mock_get_object):
         store = Store(self.conf)
 
-        _uuid = str(uuid.uuid4())
-        location = MockLocation(_uuid)
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
 
         self.assertRaises(glance_store.exceptions.RemoteServiceUnavailable,
                           store.get, location)
-        mock_get_object.assert_called_once_with(_uuid)
+        mock_get_object.assert_called_once_with(image_id)
 
     def test_get(self):
         store = Store(self.conf)
 
-        _uuid = str(uuid.uuid4())
-        location = MockLocation(_uuid)
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
 
         data = '*'*80
         headers = {'Content-length': len(data)}
@@ -116,7 +120,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
                         'get_object', mock_get_object):
             resp, content_length = store.get(location)
 
-        mock_get_object.assert_called_once_with(_uuid)
+        mock_get_object.assert_called_once_with(image_id)
         self.assertEqual(len(data), content_length)
         self.assertEqual(data, resp.another())
         self.assertEqual('', resp.another())
@@ -127,12 +131,12 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
     def test_delete_with_sproxyd_exception_404(self, mock_head):
         store = Store(self.conf)
 
-        _uuid = str(uuid.uuid4())
-        location = MockLocation(_uuid)
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
 
         self.assertRaises(glance_store.exceptions.NotFound, store.delete,
                           location)
-        mock_head.assert_called_once_with(_uuid)
+        mock_head.assert_called_once_with(image_id)
 
     @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
                 side_effect=scality_sproxyd_client.exceptions.
@@ -140,12 +144,12 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
     def test_delete_with_sproxyd_exception_500(self, mock_head):
         store = Store(self.conf)
 
-        _uuid = str(uuid.uuid4())
-        location = MockLocation(_uuid)
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
 
         self.assertRaises(scality_sproxyd_client.exceptions.
                           SproxydHTTPException, store.delete, location)
-        mock_head.assert_called_once_with(_uuid)
+        mock_head.assert_called_once_with(image_id)
 
     @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
                 mock.Mock())
@@ -154,11 +158,47 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
     def test_delete(self, mock_del_object):
         store = Store(self.conf)
 
-        _uuid = str(uuid.uuid4())
-        location = MockLocation(_uuid)
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
 
         store.delete(location)
-        mock_del_object.assert_called_once_with(_uuid)
+        mock_del_object.assert_called_once_with(image_id)
+
+    @mock.patch('scality_glance_store.store.LOG.error')
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_http_conn_for_put', side_effect=scality_sproxyd_client.
+                exceptions.SproxydException())
+    def test_add_with_sproxyd_exception(self, mock_get_http_conn_for_put,
+                                        mock_log):
+        store = Store(self.conf)
+
+        image_id = str(uuid.uuid4())
+        headers = {
+            'transfer-encoding': 'chunked',
+            'If-None-Match': '*'
+        }
+
+        self.assertRaises(scality_sproxyd_client.exceptions.SproxydException,
+                          store.add, image_id, None, None)
+        mock_get_http_conn_for_put.assert_called_once_with(image_id, headers)
+        mock_log.assert_called_once_with(mock.ANY,
+                                         mock_get_http_conn_for_put.
+                                         side_effect)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_http_conn_for_put', return_value=(mock.Mock(),
+                                                       mock.Mock()))
+    def test_add(self, mock_get_http_conn_for_put):
+        conn, release_conn = mock_get_http_conn_for_put.return_value
+
+        conn.getresponse.return_value = mock.Mock(status=200)
+
+        image_id = str(uuid.uuid4())
+        file_contents = "chunk00000remainder"
+        image_file = StringIO.StringIO(file_contents)
+
+        store = Store(self.conf)
+        store.add(image_id, image_file, None)
 
 
 def test_store_location_parse_uri_with_bad_uri():
