@@ -84,7 +84,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         self.set_sproxyd_endpoints_in_conf(endpoints)
 
         store = Store(self.conf)
-        self.assertEqual(endpoints, store.sproxyd_client.sproxyd_urls_set)
+        self.assertEqual(endpoints, store._sproxyd_client.sproxyd_urls_set)
 
     def test_get_schemes(self):
         store = Store(self.conf)

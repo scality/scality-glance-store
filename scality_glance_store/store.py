@@ -91,7 +91,7 @@ class Store(driver.Store):
         super(Store, self).__init__(conf)
 
         endpoints = self.conf.glance_store.scality_sproxyd_endpoints
-        self.sproxyd_client = sproxyd_client.SproxydClient(endpoints)
+        self._sproxyd_client = sproxyd_client.SproxydClient(endpoints)
 
     @staticmethod
     def get_schemes():
@@ -111,7 +111,7 @@ class Store(driver.Store):
         image = location.store_location.image_id
 
         try:
-            headers, data_iterator = self.sproxyd_client.get_object(image)
+            headers, data_iterator = self._sproxyd_client.get_object(image)
         except scality_sproxyd_client.exceptions.SproxydException as exc:
             reason = _LE("Remote server where the image %r is present "
                          "is unavailable : %r")
@@ -150,7 +150,7 @@ class Store(driver.Store):
         }
         try:
             conn, release_conn = \
-                self.sproxyd_client.get_http_conn_for_put(image_id, headers)
+                self._sproxyd_client.get_http_conn_for_put(image_id, headers)
         except scality_sproxyd_client.exceptions.SproxydException as exc:
             LOG.error(_LE("Error while trying to get an HTTP connection : "
                           "%r"), exc)
@@ -180,7 +180,7 @@ class Store(driver.Store):
             # Note(zhiyan): clean up already received data when
             # error occurs.
             with excutils.save_and_reraise_exception():
-                self.sproxyd_client.del_object(image_id)
+                self._sproxyd_client.del_object(image_id)
 
         # Drain connection
         resp.read()
@@ -210,7 +210,7 @@ class Store(driver.Store):
                            detail=resp.getheader('X-Scal-Ring-Status',
                                                  'Error')))
             try:
-                self.sproxyd_client.del_object(image_id)
+                self._sproxyd_client.del_object(image_id)
             except scality_sproxyd_client.exceptions.SproxydException:
                 # We silent this because this exception could be a
                 # a side effect of the failed previous operation
@@ -237,7 +237,7 @@ class Store(driver.Store):
         # To be able to raise a NotFound, we need to do a HEAD just before
         # the DELETE.
         try:
-            self.sproxyd_client.head(image)
+            self._sproxyd_client.head(image)
         except scality_sproxyd_client.exceptions.SproxydHTTPException as exc:
             if exc.http_status == 404:
                 msg = _("Image %s does not exist in the Ring") % image
@@ -245,5 +245,5 @@ class Store(driver.Store):
             else:
                 raise
 
-        self.sproxyd_client.del_object(image)
+        self._sproxyd_client.del_object(image)
         LOG.info(_LI("The image %s was deleted from the Ring"), image)
