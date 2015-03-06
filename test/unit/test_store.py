@@ -15,6 +15,7 @@
 
 """Tests for Scality Glance Store"""
 
+import hashlib
 import logging
 import mock
 import StringIO
@@ -28,6 +29,7 @@ import scality_sproxyd_client.exceptions
 
 from scality_glance_store.store import StoreLocation
 from scality_glance_store.store import Store
+from . import utils
 
 logging.getLogger('stevedore.extension').level = logging.INFO
 
@@ -164,12 +166,12 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         store.delete(location)
         mock_del_object.assert_called_once_with(image_id)
 
-    @mock.patch('scality_glance_store.store.LOG.error')
     @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
                 'get_http_conn_for_put', side_effect=scality_sproxyd_client.
                 exceptions.SproxydException())
-    def test_add_with_sproxyd_exception(self, mock_get_http_conn_for_put,
-                                        mock_log):
+    @mock.patch('scality_glance_store.store.LOG.error')
+    def test_add_with_sproxyd_exception_in_get_conn(self, mock_log,
+                                                    mock_get_conn):
         store = Store(self.conf)
 
         image_id = str(uuid.uuid4())
@@ -180,17 +182,37 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
 
         self.assertRaises(scality_sproxyd_client.exceptions.SproxydException,
                           store.add, image_id, None, None)
-        mock_get_http_conn_for_put.assert_called_once_with(image_id, headers)
-        mock_log.assert_called_once_with(mock.ANY,
-                                         mock_get_http_conn_for_put.
-                                         side_effect)
+        mock_get_conn.assert_called_once_with(image_id, headers)
+        mock_log.assert_called_once_with(mock.ANY, mock_get_conn.side_effect)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_http_conn_for_put',
+                return_value=(mock.Mock(), mock.Mock()))
+    @mock.patch('glance_store.common.utils.chunkreadable',
+                side_effect=Exception)
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'del_object')
+    def test_add_with_exception_in_put(self, mock_del_object,
+                                       mock_chunkreadable,
+                                       mock_get_http_conn_for_put):
+        store = Store(self.conf)
+
+        image_id = str(uuid.uuid4())
+        self.assertRaises(Exception, store.add, image_id, None, None)
+
+        mock_chunkreadable.assert_called_once_with(None, Store.CHUNKSIZE)
+
+        conn, release_conn = mock_get_http_conn_for_put.return_value
+        conn.close.assert_called_once_with()
+        self.assertFalse(release_conn.called)
+
+        mock_del_object.assert_called_once_with(image_id)
 
     @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
                 'get_http_conn_for_put', return_value=(mock.Mock(),
                                                        mock.Mock()))
     def test_add(self, mock_get_http_conn_for_put):
         conn, release_conn = mock_get_http_conn_for_put.return_value
-
         conn.getresponse.return_value = mock.Mock(status=200)
 
         image_id = str(uuid.uuid4())
@@ -198,7 +220,58 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         image_file = StringIO.StringIO(file_contents)
 
         store = Store(self.conf)
-        store.add(image_id, image_file, None)
+        img_uri, img_size, img_checksum, _ = store.add(image_id, image_file,
+                                                       None)
+
+        # Assert data has been written to Sproxyd
+        calls = [mock.call('%x\r\n%s\r\n' % (len(file_contents),
+                                             file_contents)),
+                 mock.call('0\r\n\r\n')]
+        conn.send.assert_has_calls(calls)
+
+        # Assert the response has been read and the connection drained
+        # and release
+        conn.getresponse.assert_called_oncewith()
+        conn.getresponse.read.assert_called_oncewith()
+        release_conn.assert_called_oncewith()
+
+        # Assert the return values of `store.add` are connect
+        self.assertEqual('scality://%s' % image_id, img_uri)
+        self.assertEqual(len(file_contents), img_size)
+        self.assertEqual(hashlib.md5(image_file.getvalue()).hexdigest(),
+                         img_checksum)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_http_conn_for_put', return_value=(mock.Mock(),
+                                                       mock.Mock()))
+    def test_add_with_response_412(self, mock_get_http_conn_for_put):
+        conn, release_conn = mock_get_http_conn_for_put.return_value
+        conn.getresponse.return_value = mock.Mock(status=412)
+
+        image_id = str(uuid.uuid4())
+        image_file = StringIO.StringIO("chunk00000remainder")
+
+        store = Store(self.conf)
+        msg = r'scality://%s .*already exists' % image_id
+        utils.assertRaisesRegexp(glance_store.exceptions.Duplicate, msg,
+                                 store.add, image_id, image_file, None)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'get_http_conn_for_put', return_value=(mock.Mock(),
+                                                       mock.Mock()))
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                'del_object')
+    def test_add_with_response_500(self, mock_del_object,
+                                   mock_get_http_conn_for_put):
+        conn, release_conn = mock_get_http_conn_for_put.return_value
+        conn.getresponse.return_value = mock.Mock(status=500)
+
+        image_id = str(uuid.uuid4())
+        image_file = StringIO.StringIO("chunk00000remainder")
+
+        store = Store(self.conf)
+        self.assertRaises(glance_store.exceptions.BackendException,
+                          store.add, image_id, image_file, None)
 
 
 def test_store_location_parse_uri_with_bad_uri():

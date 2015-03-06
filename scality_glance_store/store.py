@@ -203,7 +203,6 @@ class Store(driver.Store):
                            detail=resp.getheader('X-Scal-Ring-Status',
                                                  'Error'),
                            key=resp.getheader('X-Scal-Ring-Key')))
-            # UT the message is properly set and formatted
             raise exceptions.Duplicate(image=store_location.get_uri())
         else:
             LOG.error(_LE("Uploaded image %(iid)s resulted in unexpected "
@@ -212,8 +211,13 @@ class Store(driver.Store):
                            status=resp.status, reason=resp.reason,
                            detail=resp.getheader('X-Scal-Ring-Status',
                                                  'Error')))
-            with excutils.save_and_reraise_exception():
-                self.delete(store_location)
+            try:
+                self.sproxyd_client.del_object(image_id)
+            except scality_sproxyd_client.exceptions.SproxydException:
+                # We silent this because this exception could be a
+                # a side effect of the failed previous operation
+                pass
+            raise exceptions.BackendException()
 
         return (store_location.get_uri(), actual_image_size,
                 checksum.hexdigest(), {})
