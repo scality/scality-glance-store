@@ -36,12 +36,6 @@ import scality_sproxyd_client.utils
 LOG = logging.getLogger(__name__)
 logging.getLogger('urllib3.util.retry').level = logging.INFO
 
-"""
-rule="OUTPUT -p tcp --dport 81 -d 167.88.149.214 -j DROP";
-sudo iptables --check $rule &> /dev/null || sudo iptables -A $rule
-sudo iptables -D $rule
-"""
-
 _SPROXYD_OPTS = [
     cfg.ListOpt('scality_sproxyd_endpoints',
                 help=_("Comma-separated list of Sproxyd endpoints which "
