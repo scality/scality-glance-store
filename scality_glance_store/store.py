@@ -43,6 +43,16 @@ _SPROXYD_OPTS = [
                        "proxy/chord_path/')")),
 ]
 
+SCALITY_SCHEME = 'scality'
+
+
+class ResponseIndexable(backend.Indexable):
+    def another(self):
+        try:
+            return self.wrapped.next()
+        except StopIteration:
+            return ''
+
 
 class StoreLocation(location.StoreLocation):
     """
@@ -55,18 +65,19 @@ class StoreLocation(location.StoreLocation):
         self.image_id = self.specs['image_id']
 
     def get_uri(self):
-        return "scality://%s" % self.image_id
+        return "%s://%s" % (SCALITY_SCHEME, self.image_id)
 
     def parse_uri(self, uri):
-        prefix = 'scality://'
-        pieces = uri[len(prefix):].split('/')
-        if not uri.startswith(prefix) or len(pieces) > 1 or not pieces[0]:
+        scheme = SCALITY_SCHEME + '://'
+        prefix, suffix = uri[:len(scheme)], uri[len(scheme):]
+
+        if prefix != scheme or len(suffix) == 0 or '/' in suffix:
             msg = _('Invalid URI : %s. URI must be of the form '
                     'scality://image') % uri
             LOG.info(msg)
             raise exceptions.BadStoreUri(message=msg)
 
-        self.image_id = pieces[0]
+        self.image_id = suffix
 
 
 class Store(driver.Store):
@@ -84,7 +95,7 @@ class Store(driver.Store):
 
     @staticmethod
     def get_schemes():
-        return ('scality',)
+        return (SCALITY_SCHEME,)
 
     @capabilities.check
     def get(self, location, offset=0, chunk_size=None, context=None):
@@ -102,19 +113,12 @@ class Store(driver.Store):
         try:
             headers, data_iterator = self.sproxyd_client.get_object(image)
         except scality_sproxyd_client.exceptions.SproxydException as exc:
-            reason = _LE("Remote server where the image %s is present "
+            reason = _LE("Remote server where the image %r is present "
                          "is unavailable : %r")
             LOG.error(reason, image, exc)
             raise exceptions.RemoteServiceUnavailable()
 
-        content_length = headers['Content-length']
-
-        class ResponseIndexable(backend.Indexable):
-            def another(self):
-                try:
-                    return self.wrapped.next()
-                except StopIteration:
-                    return ''
+        content_length = headers['Content-Length']
 
         return (ResponseIndexable(data_iterator, content_length),
                 content_length)
@@ -171,7 +175,7 @@ class Store(driver.Store):
         except Exception:
             conn.close()
             conn = None
-            LOG.exception(_LE("Error during upload of image %s to the Ring"),
+            LOG.exception(_LE("Error during upload of image %s to Sproxyd"),
                           image_id)
             # Note(zhiyan): clean up already received data when
             # error occurs.
@@ -183,7 +187,7 @@ class Store(driver.Store):
         release_conn()
 
         if resp.status == 200:
-            LOG.info(_LI("Uploaded image %(iid)s, md5 %(md)s, length %(len)s, "
+            LOG.info(_LI("Uploaded image %(iid)s, md5 %(md)s, length %(len)d, "
                          "chord key %(key)s to Sproxyd"),
                      dict(iid=image_id, md=checksum.hexdigest(),
                           key=resp.getheader('X-Scal-Ring-Key'),

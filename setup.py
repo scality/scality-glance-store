@@ -72,7 +72,8 @@ setuptools.setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 2.7'],
-    install_requires=['glance_store>=0.1.10', 'scality-sproxyd-client'],
+    install_requires=['glance_store>=0.1.10', 'oslo.config>=1.6.0',
+                      'oslo.utils>=1.2.0', 'scality-sproxyd-client'],
     entry_points={
         'glance_store.drivers': [
             'scality=scality_glance_store.store:Store',
