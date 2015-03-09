@@ -33,7 +33,7 @@ be installed before installing this package.
    of *stores* in the *[glance_store]* section of *glance-api.conf*.
 
 3. Configure the Sproxyd connectors to use. Edit *glance-api.conf* and add the list of your Sproxyd connectors
-configured to accept **query by path** in the *[glance_store]* section:
+   configured to accept **query by path** in the *[glance_store]* section:
 
    .. code-block:: ini
 
