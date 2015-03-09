@@ -10,7 +10,7 @@ Scality_ RING installation.
 Installation
 ------------
 This package depends on `Scality Sproxyd client`_, a Python client library for Scality Sproxyd connector. It must 
-be installed first before installing this package.
+be installed before installing this package.
 
 .. _Scality Sproxyd client: https://github.com/scality/scality-sproxyd-client
 
@@ -29,20 +29,20 @@ be installed first before installing this package.
     stores = glance.store.filesystem.Store,
              glance.store.scality.Store,
              glance.store.http.Store
-   **N.B** This is an configuration example. Just make sure *glance.store.scality.Store* appears in the list
+   **N.B** This is a configuration example. Just make sure *glance.store.scality.Store* appears in the list
    of *stores* in the *[glance_store]* section of *glance-api.conf*.
 
-3. Set to which Sproxyd connectors to connect to. Edit your *glance-api.conf* file and add, in the 
-   *[glance_store]* section, the list of your Sproxyd connectors configured to accept **query by path**:
+3. Configure the Sproxyd connectors to use. Edit *glance-api.conf* and add the list of your Sproxyd connectors
+configured to accept **query by path** in the *[glance_store]* section:
 
    .. code-block:: ini
 
     [glance_store]
     scality_sproxyd_endpoints = http://4.5.9.2:81/proxy/chord_path/,http://4.5.9.4:81/proxy/arc_path/
 
-4. (optionnal) Use the Scality Store as the default image store. Newly uploaded Glance image will be stored in
-   Scality Ring. As of OpenStack Kilo, the default store has to be set in both the DEFAULT
-   section and the glance_store section, for compatibility reason.
+4. (optional) Use the Scality Store as the default image store. Newly uploaded Glance image will be stored in
+   Scality Ring. As of OpenStack Kilo, the default store has to be set in both the *DEFAULT*
+   section and the *glance_store* section, for compatibility reasons.
    
    .. code-block:: ini
    
