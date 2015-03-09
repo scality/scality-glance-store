@@ -1,0 +1,13 @@
+# distutils
+scality_glance_store.egg-info/
+
+# Temporary files
+*.pyc
+*~
+
+# Testing artifacts
+.tox/
+
+# Coverage
+.coverage
+cover
