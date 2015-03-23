@@ -29,7 +29,9 @@ function install {
         echo "Unknown distribution";
         exit 1;
     fi
-    sudo pip install tox;
+    # I can't have Tox 1.9.1 to work with external repository
+    # (scality-sproxyd-client)
+    sudo pip install "tox<=1.9.0";
 }
 
 install;
