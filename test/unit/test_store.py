@@ -120,8 +120,9 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         mock_get_object.return_value = headers, gen()
 
         with mock.patch(
-             'scality_sproxyd_client.sproxyd_client.SproxydClient.get_object',
-             mock_get_object):
+                'scality_sproxyd_client.sproxyd_client.'
+                'SproxydClient.get_object',
+                mock_get_object):
             resp, content_length = store.get(location)
 
         mock_get_object.assert_called_once_with(image_id)
