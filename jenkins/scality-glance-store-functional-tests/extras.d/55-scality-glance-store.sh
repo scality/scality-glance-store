@@ -5,8 +5,8 @@ function install_scality_store {
     # For some reason, doing this failed: glance-api would not restart,
     # complaining about an old version of python-six.
     # Probably a setuptools version issue
-    # sudo python setup.py install
-    sudo pip install https://github.com/scality/scality-glance-store/archive/master.tar.gz
+    #sudo python setup.py install
+    sudo pip install .
 }
 
 function enable_scality_store {

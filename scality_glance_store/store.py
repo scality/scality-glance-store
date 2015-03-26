@@ -17,7 +17,21 @@ import hashlib
 import logging
 
 from glance_store import backend
-from glance_store import capabilities
+
+# For compability with OpenStack Glance Store Juno
+try:
+    from glance_store import capabilities
+except ImportError:
+    capabilities = None
+
+# For compability with OpenStack Glance Store Juno
+try:
+    from glance_store.capabilities import check as capabilities_check
+except ImportError:
+    def capabilities_check(f):
+        return f
+
+
 from glance_store.common import utils
 from glance_store import driver
 from glance_store import exceptions
@@ -82,8 +96,9 @@ class StoreLocation(location.StoreLocation):
 
 class Store(driver.Store):
 
-    _CAPABILITIES = (capabilities.BitMasks.RW_ACCESS |
-                     capabilities.BitMasks.DRIVER_REUSABLE)
+    if capabilities:
+        _CAPABILITIES = (capabilities.BitMasks.RW_ACCESS |
+                         capabilities.BitMasks.DRIVER_REUSABLE)
     CHUNKSIZE = 64 * units.Ki
     OPTIONS = _SPROXYD_OPTS
 
@@ -97,7 +112,7 @@ class Store(driver.Store):
     def get_schemes():
         return (SCALITY_SCHEME,)
 
-    @capabilities.check
+    @capabilities_check
     def get(self, location, offset=0, chunk_size=None, context=None):
         """
         Takes a `glance_store.location.Location` object that indicates
@@ -123,7 +138,7 @@ class Store(driver.Store):
         return (ResponseIndexable(data_iterator, content_length),
                 content_length)
 
-    @capabilities.check
+    @capabilities_check
     def add(self, image_id, image_file, image_size, context=None):
         """
         Stores an image file with supplied identifier to the backend
@@ -220,7 +235,7 @@ class Store(driver.Store):
         return (store_location.get_uri(), actual_image_size,
                 checksum.hexdigest(), {})
 
-    @capabilities.check
+    @capabilities_check
     def delete(self, location, context=None):
         """
         Takes a `glance_store.location.Location` object that indicates
