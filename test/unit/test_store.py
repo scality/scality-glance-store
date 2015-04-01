@@ -84,16 +84,21 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         self.set_sproxyd_endpoints_in_conf(endpoints)
 
         store = Store(self.conf)
-        self.assertEqual(endpoints, store._sproxyd_client.sproxyd_urls_set)
+
+        actual_endpoints = frozenset(
+            store._sproxyd_client.get_next_endpoint().geturl()
+            for _ in endpoints)
+
+        self.assertEqual(endpoints, actual_endpoints)
 
     def test_get_schemes(self):
         store = Store(self.conf)
 
         self.assertEqual(('scality',), store.get_schemes())
 
-    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
-                'get_object', side_effect=scality_sproxyd_client.exceptions.
-                SproxydException)
+    @mock.patch(
+        'scality_sproxyd_client.sproxyd_client.SproxydClient.get_object',
+        side_effect=scality_sproxyd_client.exceptions.SproxydException)
     def test_get_with_sproxyd_exception(self, mock_get_object):
         store = Store(self.conf)
 
@@ -196,8 +201,8 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
                 return_value=(mock.Mock(), mock.Mock()))
     @mock.patch('glance_store.common.utils.chunkreadable',
                 side_effect=Exception)
-    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
-                'del_object')
+    @mock.patch(
+        'scality_sproxyd_client.sproxyd_client.SproxydClient.del_object')
     def test_add_with_exception_in_put(self, mock_del_object,
                                        mock_chunkreadable,
                                        mock_get_http_conn_for_put):
@@ -265,8 +270,9 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
     @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
                 'get_http_conn_for_put', return_value=(mock.Mock(),
                                                        mock.Mock()))
-    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
-                'del_object')
+    @mock.patch(
+        'scality_sproxyd_client.sproxyd_client.SproxydClient.del_object',
+        side_effect=scality_sproxyd_client.exceptions.SproxydException)
     def test_add_with_response_500(self, mock_del_object,
                                    mock_get_http_conn_for_put):
         conn, release_conn = mock_get_http_conn_for_put.return_value
@@ -278,6 +284,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         store = Store(self.conf)
         self.assertRaises(glance_store.exceptions.BackendException,
                           store.add, image_id, image_file, None)
+        mock_del_object.assert_called_once_with(image_id)
 
 
 def test_store_location_parse_uri_with_bad_uri():
