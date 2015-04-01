@@ -1,16 +1,14 @@
 #!/bin/bash -xue
 
-function is_centos {
-    [[ -f /etc/centos-release ]]
-}
-
-function is_deb {
-    [[ -f /etc/debian_version ]]
-}
-
 function common {
+    source jenkins/openstack-ci-scripts/jenkins/distro-utils.sh
+
     if is_centos; then
         sudo yum install -y wget
+    fi
+
+    if [[ $os_CODENAME == "precise" ]]; then
+        sudo add-apt-repository --yes cloud-archive:icehouse
     fi
 
     wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python -
