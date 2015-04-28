@@ -42,7 +42,7 @@ be installed before installing this package.
 
 4. (optional) Use the Scality Store as the default image store. Newly uploaded Glance image will be stored in
    Scality Ring. As of OpenStack Kilo, the default store has to be set in both the *DEFAULT*
-   section and the *glance_store* section, for compatibility reasons.
+   section and the *glance_store* section (for compatibility reasons) of *glance-api.conf*.
    
    .. code-block:: ini
    
