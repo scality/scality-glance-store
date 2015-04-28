@@ -1,7 +1,7 @@
 Scality Object Storage backend for OpenStack Glance
 ===================================================
 This package implements a back-end for OpenStack_ Glance_ storing objects in a
-Scality_ RING installation.
+Scality_ RING installation. It is compatible with Openstack Juno **and** Kilo.
 
 .. _OpenStack: http://openstack.org
 .. _Glance: http://docs.openstack.org/developer/glance/
