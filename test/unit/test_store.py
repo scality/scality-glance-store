@@ -79,6 +79,11 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         self.conf.set_override('scality_sproxyd_endpoints', endpoints,
                                group='glance_store')
 
+    def test_init_with_no_endpoint(self):
+        self.set_sproxyd_endpoints_in_conf("")
+        self.assertRaises(glance_store.exceptions.BadStoreConfiguration,
+                          Store, self.conf)
+
     def test_init(self):
         endpoints = set(['http://h1:81/proxy/', 'http://h2:81/proxy/'])
         self.set_sproxyd_endpoints_in_conf(endpoints)
