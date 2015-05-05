@@ -106,6 +106,11 @@ class Store(driver.Store):
         super(Store, self).__init__(conf)
 
         endpoints = self.conf.glance_store.scality_sproxyd_endpoints
+        if not endpoints:
+            msg = _("Empty 'scality_sproxyd_endpoints' in glance-api.conf")
+            LOG.error(msg)
+            raise exceptions.BadStoreConfiguration(store_name='scality',
+                                                   reason=msg)
         self._sproxyd_client = sproxyd_client.SproxydClient(endpoints)
 
     @staticmethod
