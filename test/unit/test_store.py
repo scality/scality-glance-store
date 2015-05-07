@@ -295,6 +295,96 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
                           store.add, image_id, image_file, None)
         mock_del_object.assert_called_once_with(image_id)
 
+    def test_range_get(self):
+        store = Store(self.conf)
+
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
+
+        # Check for proper range headers.
+        dummy_payload = "_" * 1000
+        mock_get_object = self._mock_get_object(dummy_payload)
+        mock_head = mock.Mock()
+        mock_head.return_value = {'Content-Length': str(len(dummy_payload))}
+        with mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.'
+                        'get_object', mock_get_object):
+            with mock.patch('scality_sproxyd_client.sproxyd_client.'
+                            'SproxydClient.head', mock_head):
+                # Get first byte.
+                store.get(location, offset=0, chunk_size=1)
+                headers = {'Range': 'bytes=0-0'}
+                mock_head.assert_called_once_with(image_id)
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # First 500 bytes.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, chunk_size=500)
+                headers = {'Range': 'bytes=0-499'}
+                mock_head.assert_called_once_with(image_id)
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # Second 500 bytes.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, offset=500, chunk_size=500)
+                headers = {'Range': 'bytes=500-999'}
+                mock_head.assert_called_once_with(image_id)
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # All except for the first 500 bytes.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, offset=500)
+                headers = {'Range': 'bytes=500-999'}
+                mock_head.assert_called_once_with(image_id)
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # Last 300 bytes.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, offset=-300)
+                headers = {'Range': 'bytes=700-999'}
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # Last byte.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, offset=999)
+                headers = {'Range': 'bytes=999-999'}
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+                # The whole object.
+                mock_get_object.reset_mock()
+                mock_head.reset_mock()
+                store.get(location, offset=0, chunk_size=1000)
+                headers = {'Range': 'bytes=0-999'}
+                mock_get_object.assert_called_once_with(image_id, headers)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                return_value={'Content-Length': '100'})
+    def test_invalid_range_get(self, mock_head):
+        store = Store(self.conf)
+
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
+
+        self.assertRaises(ValueError, store.get, location, offset=1000)
+        mock_head.assert_called_once_with(image_id)
+
+        mock_head.reset_mock()
+        self.assertRaises(ValueError, store.get, location, offset=100)
+        mock_head.assert_called_once_with(image_id)
+
+        mock_head.reset_mock()
+        self.assertRaises(ValueError, store.get, location, chunk_size=101)
+        mock_head.assert_called_once_with(image_id)
+
+        mock_head.reset_mock()
+        self.assertRaises(ValueError, store.get, location, offset=51,
+                          chunk_size=50)
+        mock_head.assert_called_once_with(image_id)
+
 
 def test_store_location_parse_uri_with_bad_uri():
 
