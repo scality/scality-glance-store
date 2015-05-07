@@ -79,6 +79,16 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         self.conf.set_override('scality_sproxyd_endpoints', endpoints,
                                group='glance_store')
 
+    def _mock_get_object(self, reply):
+        """Create a mock for `SproxydClient.get_object`"""
+        def response():
+            yield reply
+
+        m = mock.Mock()
+        headers = {'Content-Length': len(reply)}
+        m.return_value = headers, response()
+        return m
+
     def test_init_with_no_endpoint(self):
         self.set_sproxyd_endpoints_in_conf("")
         self.assertRaises(glance_store.exceptions.BadStoreConfiguration,
@@ -121,13 +131,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         location = MockLocation(image_id)
 
         data = '*'*80
-        headers = {'Content-Length': len(data)}
-
-        def gen():
-            yield data
-
-        mock_get_object = mock.Mock()
-        mock_get_object.return_value = headers, gen()
+        mock_get_object = self._mock_get_object(data)
 
         with mock.patch(
                 'scality_sproxyd_client.sproxyd_client.'
