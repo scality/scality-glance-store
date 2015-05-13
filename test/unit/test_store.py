@@ -122,7 +122,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
 
         self.assertRaises(glance_store.exceptions.RemoteServiceUnavailable,
                           store.get, location)
-        mock_get_object.assert_called_once_with(image_id)
+        mock_get_object.assert_called_once_with(image_id, {})
 
     def test_get(self):
         store = Store(self.conf)
@@ -139,7 +139,7 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
                 mock_get_object):
             resp, content_length = store.get(location)
 
-        mock_get_object.assert_called_once_with(image_id)
+        mock_get_object.assert_called_once_with(image_id, {})
         self.assertEqual(len(data), content_length)
         self.assertEqual(data, resp.another())
         self.assertEqual('', resp.another())
