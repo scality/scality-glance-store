@@ -98,6 +98,7 @@ class Store(driver.Store):
 
     if capabilities:
         _CAPABILITIES = (capabilities.BitMasks.RW_ACCESS |
+                         capabilities.BitMasks.READ_RANDOM |
                          capabilities.BitMasks.DRIVER_REUSABLE)
     CHUNKSIZE = 64 * units.Ki
     OPTIONS = _SPROXYD_OPTS
@@ -117,6 +118,49 @@ class Store(driver.Store):
     def get_schemes():
         return (SCALITY_SCHEME,)
 
+    def _get_range_headers(self, image_id, offset=0, chunk_size=None):
+        """
+        Calculate range headers for partial object retrieval.
+        """
+        # Obtain object size by a HEAD request. This is to ensure compatibiliy
+        # with versions of sproxyd which has limited support for implicit
+        # ranges in the HTTP Range header.
+        size = 0
+        try:
+            headers = self._sproxyd_client.head(image_id)
+            size = long(headers['Content-Length'])
+        except scality_sproxyd_client.exceptions.SproxydHTTPException as e:
+            reason = _LE("Unable to obtain size of object '%s': %r")
+            LOG.error(reason, image_id, e)
+            raise exceptions.RemoteServiceUnavailable()
+
+        if chunk_size is not None:
+            # Explicit range request.
+            if chunk_size <= 0:
+                raise ValueError("'chunk_size' must be positive")
+            elif offset < 0:
+                raise ValueError("'offset' may not be negative when "
+                                 "'chunk_size' is supplied")
+
+            range_start = offset
+            range_end = offset + chunk_size - 1
+
+        else:
+            # Request end of entity.
+            range_end = size - 1
+
+            if offset < 0:
+                range_start = size + offset
+
+            else:
+                range_start = offset
+
+        if range_start >= size or range_end >= size:
+            raise ValueError("offset=%d, chunk_size=%s outside object range "
+                             "0-%d" % (offset, chunk_size, size - 1))
+
+        return {'Range': 'bytes=%d-%d' % (range_start, range_end)}
+
     @capabilities_check
     def get(self, location, offset=0, chunk_size=None, context=None):
         """
@@ -130,8 +174,15 @@ class Store(driver.Store):
 
         image = location.store_location.image_id
 
+        # Prepare additional headers.
+        request_headers = {}
+        if offset or chunk_size:
+            request_headers.update(self._get_range_headers(image, offset,
+                                                           chunk_size))
+
+        sproxyd = self._sproxyd_client
         try:
-            headers, data_iterator = self._sproxyd_client.get_object(image)
+            headers, data_iterator = sproxyd.get_object(image, request_headers)
         except scality_sproxyd_client.exceptions.SproxydException as exc:
             reason = _LE("Remote server where the image %r is present "
                          "is unavailable : %r")
