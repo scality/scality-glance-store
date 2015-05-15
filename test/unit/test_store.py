@@ -385,6 +385,31 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
                           chunk_size=50)
         mock_head.assert_called_once_with(image_id)
 
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                return_value={'Content-Length': '100'})
+    def test_get_size(self, mock_head):
+        store = Store(self.conf)
+
+        image_id = str(uuid.uuid4())
+        location = MockLocation(image_id)
+
+        self.assertEqual(store.get_size(location), 100)
+        mock_head.assert_called_once_with(image_id)
+
+    @mock.patch('scality_sproxyd_client.sproxyd_client.SproxydClient.head',
+                return_value={'Content-Length': '100'},
+                side_effect=scality_sproxyd_client.exceptions.
+                SproxydHTTPException('404 Not Found', http_status=404))
+    def test_get_size_not_found(self, mock_head):
+        store = Store(self.conf)
+
+        missing = str(uuid.uuid4())
+        location = MockLocation(missing)
+
+        self.assertRaises(glance_store.exceptions.NotFound,
+                          store.get_size, location)
+        mock_head.assert_called_once_with(missing)
+
 
 def test_store_location_parse_uri_with_bad_uri():
 
