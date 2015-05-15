@@ -118,21 +118,14 @@ class Store(driver.Store):
     def get_schemes():
         return (SCALITY_SCHEME,)
 
-    def _get_range_headers(self, image_id, offset=0, chunk_size=None):
+    def _get_range_headers(self, location, offset=0, chunk_size=None):
         """
         Calculate range headers for partial object retrieval.
         """
         # Obtain object size by a HEAD request. This is to ensure compatibiliy
         # with versions of sproxyd which has limited support for implicit
         # ranges in the HTTP Range header.
-        size = 0
-        try:
-            headers = self._sproxyd_client.head(image_id)
-            size = long(headers['Content-Length'])
-        except scality_sproxyd_client.exceptions.SproxydHTTPException as e:
-            reason = _LE("Unable to obtain size of object '%s': %r")
-            LOG.error(reason, image_id, e)
-            raise exceptions.RemoteServiceUnavailable()
+        size = self.get_size(location)
 
         if chunk_size is not None:
             # Explicit range request.
@@ -198,7 +191,7 @@ class Store(driver.Store):
         # Prepare additional headers.
         request_headers = {}
         if offset or chunk_size:
-            request_headers.update(self._get_range_headers(image, offset,
+            request_headers.update(self._get_range_headers(location, offset,
                                                            chunk_size))
 
         sproxyd = self._sproxyd_client
