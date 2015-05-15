@@ -122,6 +122,17 @@ class Store(driver.Store):
         """
         Calculate range headers for partial object retrieval.
         """
+        def check_params(offset, chunk_size):
+            if chunk_size is not None:
+                if chunk_size <= 0:
+                    raise ValueError("'chunk_size' must be positive")
+                elif offset < 0:
+                    raise ValueError("'offset' may not be negative when "
+                                     "'chunk_size' is supplied")
+
+        # Validate input.
+        check_params(offset, chunk_size)
+
         # Obtain object size by a HEAD request. This is to ensure compatibiliy
         # with versions of sproxyd which has limited support for implicit
         # ranges in the HTTP Range header.
@@ -129,12 +140,6 @@ class Store(driver.Store):
 
         if chunk_size is not None:
             # Explicit range request.
-            if chunk_size <= 0:
-                raise ValueError("'chunk_size' must be positive")
-            elif offset < 0:
-                raise ValueError("'offset' may not be negative when "
-                                 "'chunk_size' is supplied")
-
             range_start = offset
             range_end = offset + chunk_size - 1
 
