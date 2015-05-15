@@ -161,6 +161,27 @@ class Store(driver.Store):
 
         return {'Range': 'bytes=%d-%d' % (range_start, range_end)}
 
+    def get_size(self, location, context=None):
+        """
+        Retrieves image size by location.
+
+        :param location: :py:class:`glance_store.location:Location` object
+        """
+        image_id = location.store_location.image_id
+
+        try:
+            headers = self._sproxyd_client.head(image_id)
+            size = long(headers['Content-Length'])
+        except scality_sproxyd_client.exceptions.SproxydHTTPException as e:
+            reason = _LE("Unable to obtain size of object '%s': %r")
+            LOG.error(reason, image_id, e)
+            if e.http_status == 404:
+                raise exceptions.NotFound(image=image_id)
+            else:
+                raise
+
+        return size
+
     @capabilities_check
     def get(self, location, offset=0, chunk_size=None, context=None):
         """
