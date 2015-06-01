@@ -2,7 +2,7 @@
 
 TEMPEST_DIR=/opt/stack/tempest
 sudo pip install -r $TEMPEST_DIR/test-requirements.txt -r $TEMPEST_DIR/requirements.txt 
-sudo pip install nose
+sudo pip install --upgrade nose
 set +e
 nosetests -w $TEMPEST_DIR/tempest/api/image --exe --with-xunit --xunit-file=${WORKSPACE}/nosetests.xml
 set -e
