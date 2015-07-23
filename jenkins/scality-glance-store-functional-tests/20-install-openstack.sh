@@ -11,12 +11,11 @@ function common {
         sudo add-apt-repository --yes cloud-archive:icehouse
     fi
 
-    wget https://bootstrap.pypa.io/ez_setup.py -O - | sudo python -
-    sudo easy_install pip
-    sudo easy_install -U six
+    wget https://bootstrap.pypa.io/get-pip.py -O - | sudo python -
+    sudo pip install -U six
 
     if is_centos; then
-        sudo yum install -y https://kojipkgs.fedoraproject.org//packages/python-mox/0.5.3/2.el6/noarch/python-mox-0.5.3-2.el6.noarch.rpm
+        sudo yum install -y ftp://ftp.is.co.za/mirror/fedora.redhat.com/epel/6/x86_64/python-mox-0.5.3-2.el6.noarch.rpm
     fi
 
     git clone -b ${DEVSTACK_BRANCH:-master} https://github.com/openstack-dev/devstack.git
