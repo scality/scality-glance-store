@@ -247,9 +247,9 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
 
         # Assert the response has been read and the connection drained
         # and release
-        conn.getresponse.assert_called_oncewith()
-        conn.getresponse.read.assert_called_oncewith()
-        release_conn.assert_called_oncewith()
+        conn.getresponse.assert_called_once_with()
+        conn.getresponse().read.assert_called_once_with()
+        release_conn.assert_called_once_with()
 
         # Assert the return values of `store.add` are connect
         self.assertEqual('scality://%s' % image_id, img_uri)
