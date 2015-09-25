@@ -16,6 +16,13 @@ function common {
 
     if is_centos; then
         sudo yum install -y ftp://ftp.is.co.za/mirror/fedora.redhat.com/epel/6/x86_64/python-mox-0.5.3-2.el6.noarch.rpm
+
+        if test "${DEVSTACK_BRANCH:-x}" = "stable/juno"; then
+            RHEL6_RDO_REPO_RPM="http://buildlogs.centos.org/centos/6/cloud/x86_64/openstack-juno/centos-release-openstack-juno-2.el6.noarch.rpm"
+            export RHEL6_RDO_REPO_RPM
+            RHEL6_RDO_REPO_ID="CentOS-OpenStack-juno"
+            export RHEL6_RDO_REPO_ID
+        fi
     fi
 
     git clone -b ${DEVSTACK_BRANCH:-master} https://github.com/openstack-dev/devstack.git
