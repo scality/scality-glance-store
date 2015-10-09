@@ -1,4 +1,4 @@
 glance_store>=0.1.10
-oslo.config>=1.6.0 # Apache-2.0
-oslo.utils>=1.2.0 # Apache-2.0
+oslo.config>=1.2.0 # Apache-2.0
+oslo.utils>=1.0.0 # Apache-2.0
 git+https://github.com/scality/scality-sproxyd-client.git#egg=scality-sproxyd-client

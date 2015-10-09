@@ -38,9 +38,21 @@ from glance_store import exceptions
 from glance_store.i18n import _, _LI, _LE
 from glance_store import location
 
-from oslo_config import cfg
-from oslo_utils import excutils
-from oslo_utils import units
+# For compability with OpenStack Glance Store Juno
+# which requires glance_store>=0.1.10. Glance_store 0.1.10
+# requires oslo.config>=1.2.0 which only provides olso.config
+try:
+    from oslo_config import cfg
+except ImportError:
+    from oslo.config import cfg
+try:
+    from oslo_utils import excutils
+except ImportError:
+    from oslo.utils import excutils
+try:
+    from oslo_utils import units
+except ImportError:
+    from oslo.utils import units
 
 import scality_sproxyd_client.exceptions
 from scality_sproxyd_client import sproxyd_client
