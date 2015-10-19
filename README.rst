@@ -1,7 +1,7 @@
 Scality Object Storage backend for OpenStack Glance
 ===================================================
 This package implements a back-end for OpenStack_ Glance_ storing objects in a
-Scality_ RING installation. It is compatible with Openstack Juno **and** Kilo.
+Scality_ RING installation. It is compatible with Openstack Juno, Kilo **and** Liberty.
 
 .. _OpenStack: http://openstack.org
 .. _Glance: http://docs.openstack.org/developer/glance/
@@ -10,9 +10,13 @@ Scality_ RING installation. It is compatible with Openstack Juno **and** Kilo.
 Installation
 ------------
 This package depends on `Scality Sproxyd client`_, a Python client library for Scality Sproxyd connector. It must 
-be installed before installing this package.
+be installed before installing this package. Refer to the `Scality Sproxyd client`_ pages for installation.
 
 .. _Scality Sproxyd client: https://github.com/scality/scality-sproxyd-client
+
+0. Download and uncompress the source code of this project. All the releases for this project can be found here_.
+
+.. _here: https://github.com/scality/scality-glance-store/releases
 
 1. Install this package:
 
