@@ -61,7 +61,7 @@ def get_version():
 
 setuptools.setup(
     name='scality-glance-store',
-    version='0.0.0',
+    version='1.0.0',
     description='Scality Ring backend for OpenStack Glance',
     url='http://www.scality.com/',
     author='Scality Openstack Engineering Team',
