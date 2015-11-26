@@ -13,6 +13,8 @@ fi
 
 if [[ $os_CODENAME == "precise" ]]; then
     sudo add-apt-repository --yes cloud-archive:icehouse
+    # https://review.openstack.org/#/c/246973/ removed support for Ubuntu Precise
+    export FORCE=yes
 fi
 
 git clone -b ${DEVSTACK_BRANCH:-master} https://github.com/openstack-dev/devstack.git
