@@ -22,6 +22,10 @@ cat > devstack/local.conf <<-EOF
 	[[local|localrc]]
 	DATABASE_PASSWORD=testtest; RABBIT_PASSWORD=testtest; SERVICE_TOKEN=testtest; SERVICE_PASSWORD=testtest; ADMIN_PASSWORD=testtest; SCREEN_LOGDIR=\${DEST}/logs
 	disable_service n-xvnc n-novnc n-obj h-eng h-api h-api-cfn h-api-cw horizon
+	# 167.88.149.196 is a physical server in the Scality OpenStack Lab. It hosts a copy
+	# of github.com/scality/devstack-plugin-scality to avoid Github's rate limiting.
+	enable_plugin scality git://167.88.149.196/devstack-plugin-scality
+	SCALITY_SPROXYD_ENDPOINTS=http://127.0.0.1:81/proxy/bpchord
 	[[post-config|\$GLANCE_API_CONF]]
 	[glance_store]
 	default_store = scality
