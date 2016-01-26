@@ -15,4 +15,7 @@ if [[ -f "/var/log/syslog" ]]; then
     sudo cp /var/log/syslog jenkins-logs/syslog
 fi
 
-sudo chown jenkins jenkins-logs/*
+# || true has been added to workaround this failure:
+# "chown fails with chown: cannot dereference ‘jenkins-logs/xx’:
+# No such file or directory"
+sudo chown jenkins jenkins-logs/* || true
