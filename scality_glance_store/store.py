@@ -156,7 +156,8 @@ class Store(driver.Store):
                 content_length)
 
     @capabilities_check
-    def add(self, image_id, image_file, image_size, context=None):
+    def add(self, image_id, image_file, image_size, context=None,
+            verifier=None):
         """
         Stores an image file with supplied identifier to the backend
         storage system and returns a tuple containing information
@@ -165,6 +166,7 @@ class Store(driver.Store):
         :param image_id: The opaque image identifier
         :param image_file: The image data to write, as a file-like object
         :param image_size: The size of the image data to write, in bytes
+        :param verifier: An object used to verify signatures for images
 
         :retval tuple of URL in backing store, bytes written, and checksum
         :raises `glance_store.exceptions.Duplicate` if the image already
@@ -202,6 +204,10 @@ class Store(driver.Store):
                 actual_image_size += chunk_length
                 conn.send('%x\r\n%s\r\n' % (chunk_length, chunk))
                 checksum.update(chunk)
+
+                if verifier:
+                    verifier.update(chunk)
+
             conn.send('0\r\n\r\n')
             resp = conn.getresponse()
         except Exception:

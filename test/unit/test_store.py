@@ -235,15 +235,20 @@ class TestStore(glance_store.tests.base.StoreBaseTest):
         file_contents = "chunk00000remainder"
         image_file = StringIO.StringIO(file_contents)
 
+        verifier = mock.Mock()
+
         store = Store(self.conf)
         img_uri, img_size, img_checksum, _ = store.add(image_id, image_file,
-                                                       None)
+                                                       None, verifier=verifier)
 
         # Assert data has been written to Sproxyd
         calls = [mock.call('%x\r\n%s\r\n' % (len(file_contents),
                                              file_contents)),
                  mock.call('0\r\n\r\n')]
         conn.send.assert_has_calls(calls)
+
+        # Assert that the crypto verifier has been called
+        verifier.update.assert_called_once_with(file_contents)
 
         # Assert the response has been read and the connection drained
         # and release
